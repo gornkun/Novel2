@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WriterHub - แพลตฟอร์มแต่งและอ่านนิยาย + AI Assistant</title>
+    <style>
+        :root {
+            --primary-color: #ff6b6b;
+            --secondary-color: #4ecdc4;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --ai-color: #6c5ce7;
+        }
+        body { font-family: 'Sukhumvit Set', 'Taviraj', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; }
+        header { background-color: white; padding: 15px 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--primary-color); }
+        .nav-tabs { display: flex; gap: 15px; }
+        .nav-tabs button { background: none; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; color: #666; padding: 5px 10px; border-radius: 4px; }
+        .nav-tabs button.active { background-color: var(--primary-color); color: white; }
+        
+        .container { max-width: 900px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .section { display: none; }
+        .section.active { display: block; }
+        
+        input, textarea, select { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+        button.btn { background-color: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button.btn:hover { opacity: 0.9; }
+        button.btn-ai { background-color: var(--ai-color); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+        button.btn-ai:hover { opacity: 0.9; }
+        
+        .novel-card { border: 1px solid #eee; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .novel-info h3 { margin: 0 0 5px; color: #222; }
+        .novel-info p { margin: 0; color: #666; font-size: 0.9rem; }
+        
+        .comment-box { margin-top: 10px; background: #f1f2f6; padding: 10px; border-radius: 6px; }
+        .ai-box { background: #f3f0ff; border: 1px dashed var(--ai-color); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📖 WriterHub & AI Studio</h1>
+    <div class="nav-tabs">
+        <button class="active" onclick="switchTab('home', this)">หน้าแรก / ค้นหา</button>
+        <button onclick="switchTab('writer', this)">แต่งนิยาย & AI ช่วยคิด</button>
+        <button onclick="switchTab('community', this)">ชุมชนนักอ่าน</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- 1. หน้าแรก / ค้นหา / คลังนิยาย -->
+    <div id="home" class="section active">
+        <h2>📚 คลังนิยายทั้งหมด</h2>
+        <input type="text" id="searchInput" placeholder="ค้นหาชื่อนิยาย หรือเนื้อเรื่อง..." onkeyup="renderNovels()">
+        <div id="novelList"></div>
+    </div>
+
+    <!-- 2. ฝั่งผู้แต่ง & AI ช่วยคิดพล็อต -->
+    <div id="writer" class="section">
+        <h2>✍️ จัดการคลังผลงาน & ผู้ช่วย AI</h2>
+        
+        <!-- ส่วน AI ช่วยคิด -->
+        <div class="ai-box">
+            <h3 style="color: var(--ai-color); margin-top:0;">🤖 AI Creative Assistant (ผู้ช่วยอัจฉริยะ)</h3>
+            <label>ให้ AI ช่วยคิดเรื่องอะไรดี?</label>
+            <select id="aiPromptType">
+                <option value="plot">💡 คิดพล็อตนิยายแนวแฟนตาซี/ระบบ</option>
+                <option value="continue">✍️ แต่งเนื้อเรื่องต่อจากข้อความปัจจุบัน</option>
+                <option value="name">✨ ตั้งชื่อตัวละคร/ชื่อเรื่องสุดปัง</option>
+            </select>
+            <button class="btn-ai" onclick="runAIHelper()">✨ ให้ AI ช่วยคิด</button>
+            <p id="aiResult" style="font-style: italic; color: #555; margin-top: 5px;"></p>
+        </div>
+
+        <form id="novelForm" onsubmit="saveNovel(event)">
+            <input type="hidden" id="novelId">
+            <label>ชื่อเรื่องนิยาย:</label>
+            <input type="text" id="novelTitle" required placeholder="ระบุชื่อเรื่อง...">
+            
+            <label>เนื้อเรื่องย่อ / ตอนที่แต่ง:</label>
+            <textarea id="novelContent" rows="6" required placeholder="พิมพ์เนื้อหานิยายของคุณที่นี่ หรือให้ AI ช่วยเติม..."></textarea>
+            
+            <button type="submit" class="btn">บันทึกผลงานลงคลัง</button>
+        </form>
+
+        <hr style="margin: 30px 0;">
+        <h3>ผลงานของฉัน</h3>
+        <div id="myNovelList"></div>
+    </div>
+
+    <!-- 3. ชุมชน / ปฏิสัมพันธ์ -->
+    <div id="community" class="section">
+        <h2>💬 ชุมชนพูดคุย & ให้กำลังใจนักเขียน</h2>
+        <textarea id="commentInput" rows="3" placeholder="แสดงความคิดเห็น หรือติชมผลงาน..."></textarea>
+        <button class="btn" onclick="addComment()">โพสต์ความคิดเห็น</button>
+        
+        <div id="commentList" style="margin-top: 20px;"></div>
+    </div>
+
+</div>
+
+<script>
+    // โหลดข้อมูลเริ่มต้นจาก localStorage
+    let novels = JSON.parse(localStorage.getItem('novels')) || [
+        { id: 1, title: 'ระบบสร้างฝันนักเขียน', content: 'บทที่ 1: จุดเริ่มต้นของเส้นทางนักเขียนมืออาชีพ เมื่อตัวเอกได้รับระบบอัจฉริยะ...', likes: 5 }
+    ];
+    let comments = JSON.parse(localStorage.getItem('comments')) || [
+        { text: 'เนื้อเรื่องสนุกมากครับ ติดตามตอนต่อไปเลย!', author: 'นักอ่านเงา' }
+    ];
+
+    // ฟังก์ชันเปลี่ยนหน้าแท็บ
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+        if(tabId === 'home') renderNovels();
+        if(tabId === 'writer') renderMyNovels();
+        if(tabId === 'community') renderComments();
+    }
+
+    // จำลองระบบ AI ช่วยคิด
+    function runAIHelper() {
+        const type = document.getElementById('aiPromptType').value;
+        const contentArea = document.getElementById('novelContent');
+        const resultEl = document.getElementById('aiResult');
+        
+        if(type === 'plot') {
+            const plots = [
+                "พล็อตแนะนำ: ตัวเอกตื่นมาในร่างตัวประกอบผู้ร้ายกาจในนิยายแฟนตาซี แต่เขากลับมีระบบสปีดชาร์จพลังขั้นเทพที่คนอื่นไม่มี!",
+                "พล็อตแนะนำ: ยุควันสิ้นโลกมาถึง พร้อมกับห้างสรรพสินค้าลอยฟ้าที่ให้ตัวเอกบริหารจัดการและขายไอเทมเอาชีวิตรอด",
+                "พล็อตแนะนำ: เซียนกระบี่ผู้ยิ่งใหญ่ทะลุมิติมาอยู่ในร่างเด็กหนุ่มมัธยมปลายอ่อนแอในโลกยุคปัจจุบันที่มีตึกสูงระฟ้า"
+            ];
+            const randomPlot = plots[Math.floor(Math.random() * plots.length)];
+            resultEl.innerText = randomPlot;
+        } else if(type === 'continue') {
+            const continuations = [
+                " ทันใดนั้น ท้องฟ้าก็ปรากฏแสงสีทองสว่างวาบ พร้อมกับเสียงแจ้งเตือนจากระบบดังขึ้นในหัวว่า 'ตรวจสอบพบภารกิจลับระดับ S!'",
+                " รอยยิ้มมุมปากปรากฏขึ้นช้าๆ เขาก้าวเท้าไปข้างหน้าอย่างมั่นใจโดยไม่เกรงกลัวต่อสายตาที่มองมาเลยแม้แต่น้อย",
+                " บรรยากาศรอบตัวเริ่มเปลี่ยนเป็นเย็นยะเยือก เงาร่างปริศนาค่อยๆ ก้าวออกมาจากความมืดพร้อมกับรอยยิ้มอันตราย"
+            ];
+            const randomText = continuations[Math.floor(Math.random() * continuations.length)];
+            contentArea.value += randomText;
+            resultEl.innerText = "AI เติมข้อความต่อท้ายให้เรียบร้อยแล้ว!";
+        } else if(type === 'name') {
+            const names = [
+                "ชื่อแนะนำ: 'หลินเฟิง (ผู้พิชิตสวรรค์)', 'ศิลา มนตราภรณ์', 'อัคคี ทลายภพ'",
+                "ชื่อเรื่องแนะนำ: 'เกิดใหม่เป็นเจ้าสำนักหมื่นวิญญาณ', 'ระบบเทพเซียนพันล้านวิว'"
+            ];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            resultEl.innerText = randomName;
+        }
+    }
+
+    // บันทึก/เพิ่มนิยาย
+    function saveNovel(e) {
+        e.preventDefault();
+        const id = document.getElementById('novelId').value;
+        const title = document.getElementById('novelTitle').value;
+        const content = document.getElementById('novelContent').value;
+
+        if(id) {
+            const index = novels.findIndex(n => n.id == id);
+            if(index !== -1) {
+                novels[index].title = title;
+                novels[index].content = content;
+            }
+        } else {
+            const newNovel = { id: Date.now(), title, content, likes: 0 };
+            novels.push(newNovel);
+        }
+
+        localStorage.setItem('novels', JSON.stringify(novels));
+        document.getElementById('novelForm').reset();
+        document.getElementById('novelId').value = '';
+        alert('บันทึกผลงานลงคลังเรียบร้อยแล้ว!');
+        renderMyNovels();
+    }
+
+    // แสดงรายการนิยายหน้าแรก
+    function renderNovels() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const listEl = document.getElementById('novelList');
+        listEl.innerHTML = '';
+
+        const filtered = novels.filter(n => n.title.toLowerCase().includes(keyword) || n.content.toLowerCase().includes(keyword));
+
+        if(filtered.length === 0) {
+            listEl.innerHTML = '<p style="color:#666;">ไม่พบนิยายที่คุณค้นหา</p>';
+            return;
+        }
+
+        filtered.forEach(n => {
+            listEl.innerHTML += `
+                <div class="novel-card">
+                    <div class="novel-info">
+                        <h3>📖 ${n.title}</h3>
+                        <p>${n.content.substring(0, 100)}...</p>
+                    </div>
+                    <div>
+                        <button class="btn" style="background-color:#4ecdc4;" onclick="likeNovel(${n.id})">❤️ (${n.likes})</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // แสดงผลงานฝั่งผู้แต่ง
+    function renderMyNovels() {
+        const myListEl = document.getElementById('myNovelList');
+        myListEl.innerHTML = '';
+        novels.forEach(n => {
+            myListEl.innerHTML += `
+                <div class="novel-card">
+                    <div class="novel-info">
+                        <h3>${n.title}</h3>
+                        <p>${n.content.substring(0, 80)}...</p>
+                    </div>
+                    <div>
+                        <button onclick="editNovel(${n.id})" style="padding:5px 10px; cursor:pointer;">แก้ไข</button>
+                        <button onclick="deleteNovel(${n.id})" style="padding:5px 10px; background:#ff6b6b; color:white; border:none; cursor:pointer;">ลบ</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // กดไลก์
+    function likeNovel(id) {
+        const target = novels.find(n => n.id === id);
+        if(target) {
+            target.likes += 1;
+            localStorage.setItem('novels', JSON.stringify(novels));
+            renderNovels();
+        }
+    }
+
+    // แก้ไขนิยาย
+    function editNovel(id) {
+        const target = novels.find(n => n.id === id);
+        if(target) {
+            document.getElementById('novelId').value = target.id;
+            document.getElementById('novelTitle').value = target.title;
+            document.getElementById('novelContent').value = target.content;
+        }
+    }
+
+    // ลบ
+    function deleteNovel(id) {
+        if(confirm('คุณต้องการลบผลงานนี้ใช่หรือไม่?')) {
+            novels = novels.filter(n => n.id !== id);
+            localStorage.setItem('novels', JSON.stringify(novels));
+            renderMyNovels();
+        }
+    }
+
+    // คอมเมนต์
+    function addComment() {
+        const text = document.getElementById('commentInput').value;
+        if(!text.trim()) return;
+        comments.push({ text, author: 'นักอ่านทั่วไป' });
+        localStorage.setItem('comments', JSON.stringify(comments));
+        document.getElementById('commentInput').value = '';
+        renderComments();
+    }
+
+    // แสดงคอมเมนต์
+    function renderComments() {
+        const commentListEl = document.getElementById('commentList');
+        commentListEl.innerHTML = '<h4>ความคิดเห็นล่าสุด:</h4>';
+        comments.forEach(c => {
+            commentListEl.innerHTML += `
+                <div class="comment-box">
+                    <strong>👤 ${c.author}:</strong> ${c.text}
+                </div>
+            `;
+        });
+    }
+
+    renderNovels();
+</script>
+
+</body>
+</html>
